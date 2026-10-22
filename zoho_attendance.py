@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Zoho People check-in / check-out via the attendance API.
 
-Usage:  python zoho_attendance.py checkin|checkout [--dry-run]
+Usage:  python zoho_attendance.py checkin|checkout|check [--dry-run]
+
+"check" is read-only: it verifies your credentials and API access without marking attendance.
 
 Environment variables:
   ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN   OAuth credentials (required)
@@ -58,13 +60,49 @@ def get_access_token(dc):
     return data["access_token"]
 
 
+def check_access(dc):
+    """Read-only diagnosis: token refresh, then a harmless attendance read."""
+    print("1/2 Refreshing access token ...")
+    token = get_access_token(dc)
+    print("    OK: client ID, secret and refresh token are valid.")
+
+    print("2/2 Calling the attendance API (read-only) ...")
+    now = datetime.now(ZoneInfo(env("ZOHO_TIMEZONE", "Asia/Kolkata")))
+    params = {"date": now.strftime("%d-%m-%Y"), "dateFormat": "dd-MM-yyyy"}
+    if env("ZOHO_EMP_ID"):
+        params["empId"] = env("ZOHO_EMP_ID")
+    else:
+        params["emailId"] = env("ZOHO_EMAIL", required=True)
+    url = f"https://people.zoho.{dc}/people/api/attendance/getAttendanceEntries"
+    req = urllib.request.Request(url + "?" + urllib.parse.urlencode(params))
+    req.add_header("Authorization", f"Zoho-oauthtoken {token}")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = resp.read().decode()
+        print("    OK: your role CAN access the attendance API.")
+        print(body[:500])
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        print(f"    FAILED: HTTP {e.code}: {body[:500]}")
+        if "7077" in body:
+            print("    -> Your Zoho People role is not allowed to use APIs. Ask your admin to enable API access.")
+        elif e.code in (401, 403):
+            print("    -> Permission/scope problem: check the token scope (ZOHOPEOPLE.attendance.ALL) and role.")
+        else:
+            print("    -> Check ZOHO_EMP_ID, ZOHO_DC and the request details above.")
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("action", choices=["checkin", "checkout"])
+    parser.add_argument("action", choices=["checkin", "checkout", "check"])
     parser.add_argument("--dry-run", action="store_true", help="print what would be sent")
     args = parser.parse_args()
 
     dc = env("ZOHO_DC", "com")
+    if args.action == "check":
+        check_access(dc)
+        return
     now = datetime.now(ZoneInfo(env("ZOHO_TIMEZONE", "Asia/Kolkata")))
 
     skip_dates = {d.strip() for d in env("SKIP_DATES", "").split(",") if d.strip()}

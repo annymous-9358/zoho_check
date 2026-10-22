@@ -9,10 +9,10 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "checkin or checkout"
+        description: "checkin, checkout, or check (read-only access test)"
         required: true
         type: choice
-        options: [checkin, checkout]
+        options: [check, checkin, checkout]
 
 jobs:
   run:

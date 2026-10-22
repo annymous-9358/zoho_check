@@ -36,7 +36,7 @@ Edit the cron times in `.github/workflows/attendance.yml` (they are UTC). GitHub
 ```
 ZOHO_EMP_ID=... python zoho_attendance.py checkin --dry-run      # prints the request only
 ```
-Then trigger **Actions → Zoho attendance → Run workflow** to do a real check-in.
+Run **Actions → Zoho attendance → Run workflow → `check`** first. It is read-only and tells you whether your credentials and role have API access. Then try `checkin`.
 
 ## Notes
 
