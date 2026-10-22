@@ -1,7 +1,7 @@
 name: Zoho attendance
 
 # GitHub cron is UTC and can be delayed by several minutes under load.
-# Defaults below: check in 09:30 IST (04:00 UTC), check out 18:30 IST (13:00 UTC), Mon-Fri.
+# Defaults below (edit to match your hours): check in 09:30 IST (04:00 UTC), check out 18:30 IST (13:00 UTC), Mon-Fri.
 on:
   schedule:
     - cron: "0 4 * * 1-5"
