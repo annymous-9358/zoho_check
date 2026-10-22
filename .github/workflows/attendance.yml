@@ -1,0 +1,40 @@
+name: Zoho attendance
+
+# GitHub cron is UTC and can be delayed by several minutes under load.
+# Defaults below: check in 09:30 IST (04:00 UTC), check out 18:30 IST (13:00 UTC), Mon-Fri.
+on:
+  schedule:
+    - cron: "0 4 * * 1-5"
+    - cron: "0 13 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "checkin or checkout"
+        required: true
+        type: choice
+        options: [checkin, checkout]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check in / out
+        env:
+          ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_EMP_ID: ${{ secrets.ZOHO_EMP_ID }}
+          ZOHO_DC: ${{ vars.ZOHO_DC || 'com' }}
+          ZOHO_TIMEZONE: ${{ vars.ZOHO_TIMEZONE || 'Asia/Kolkata' }}
+          SKIP_DATES: ${{ vars.SKIP_DATES }}
+          ACTION_INPUT: ${{ inputs.action }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          if [ -n "$ACTION_INPUT" ]; then action="$ACTION_INPUT"
+          elif [ "$SCHEDULE" = "0 4 * * 1-5" ]; then action=checkin
+          else action=checkout; fi
+          python zoho_attendance.py "$action"
